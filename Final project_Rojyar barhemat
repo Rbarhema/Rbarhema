@@ -1,0 +1,137 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+from smt.surrogate_models import KRG
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import pandas as pd
+from tensorflow.keras.layers.experimental import preprocessing
+
+print(tf.__version__)
+
+train_dataset = pd.read_csv('TRAIN.csv', names=['H', 'W1', 'W2','T1','T2','T3','Load capacity'],
+                          na_values='?', comment='\t',
+                          sep=',', skipinitialspace=True)
+
+test_dataset = pd.read_csv('VALIDATION.csv', names=['H', 'W1', 'W2','T1','T2','T3','Load capacity'],
+                          na_values='?', comment='\t',
+                          sep=',', skipinitialspace=True)
+
+
+train_input = train_dataset.copy()
+train_input.tail()
+test_input = test_dataset.copy()
+train_output = train_input.pop('Load capacity')
+test_output = test_input.pop('Load capacity')
+train_output.tail()
+test_input.tail()
+
+import sklearn
+from smt.surrogate_models import KPLS
+sm = KPLS(theta0=[1e-2])
+sm.set_training_values(train_input.to_numpy(),train_output.to_numpy())
+sm.train()
+
+test_predict = sm.predict_values(test_input.to_numpy())
+train_predict = sm.predict_values(train_input.to_numpy())
+test_predict=np.concatenate(test_predict)
+
+# estimated variance
+s2 = sm.predict_variances(test_input.to_numpy())
+# derivative according to the first variable
+dydx = sm.predict_derivatives(train_input.to_numpy(), 0)
+fig, axs = plt.subplots(1)
+
+# add a plot with variance
+axs.plot(train_output, train_predict, "o")
+axs.plot(test_output, test_predict, "o")
+
+import sklearn
+plt.show()
+
+pre_test=sm.predict_values(test_input.to_numpy())
+pre_train=sm.predict_values(train_input.to_numpy())
+
+
+from joblib import dump
+
+dump(sm, 'Stiffness.pk3')
+
+# Import required packages
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+from pylab import cm
+
+
+# derivative according to the first variable
+mpl.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 24
+plt.rcParams['axes.linewidth'] = 2
+params = {'mathtext.default': 'regular' }
+plt.rcParams.update(params)
+
+fig, axs = plt.subplots(figsize=(6,6))
+
+# Add the x and y-axis labels
+axs.set_xlabel('Actual value (kN/mm)')
+axs.set_ylabel('Prediction (kN/mm)')
+
+point1 = [0, 160]
+point2 = [0, 160]
+
+plt.plot(point1, point2,linestyle='--',color='#B1C0C0', label= 'Ideal prediction')
+
+# add a plot with variance
+axs.plot(test_output, test_predict, "o", c="#087e8b", label= 'Validation set $R^2 = 0.97$')
+axs.plot(train_output, train_predict,"o", c="#f15025", label= 'Training set $R^2 = 0.98$')
+axs.set_ylim([10,160])
+axs.set_xlim([10,160])
+axs.set_xticks(np.arange(10, 161, 30))
+axs.set_yticks(np.arange(10, 161, 30))
+
+
+axs.xaxis.set_tick_params(which='major', size=7, width=1.5, direction='in', top='on')
+axs.xaxis.set_tick_params(which='minor', size=4, width=1.5, direction='in', top='on')
+axs.yaxis.set_tick_params(which='major', size=7, width=1.5, direction='in', right='on')
+axs.yaxis.set_tick_params(which='minor', size=5, width=1.5, direction='in', right='on')
+mpl.rcParams['xtick.major.pad']='12'
+mpl.rcParams['ytick.major.pad']='12'
+
+
+handles, labels = plt.gca().get_legend_handles_labels()
+order = [1,2,0]
+plt.legend([handles[idx] for idx in order],[labels[idx] for idx in order],ncol=1, loc='upper left',frameon=False, prop={'size': 18})
+
+plt.plot()
+
+
+import sklearn
+axs.set_aspect('equal')
+
+plt.tight_layout()
+plt.savefig('Prediction-Actual.png',dpi=600, bbox_inches='tight', pad_inches=0)
+plt.show()
+
+
+RMSE=sklearn.metrics.mean_squared_error(test_predict,test_output,squared=False)
+print(RMSE)
+
+RMSE=sklearn.metrics.mean_squared_error(train_predict,train_output,squared=False)
+print(RMSE)
+
+R2=sklearn.metrics.r2_score(test_predict,test_output,)
+print(R2)
+
+
+R2=sklearn.metrics.r2_score(train_predict,train_output,)
+print(R2)
+
+from sklearn.metrics import mean_squared_error
+mean_squared_error(test_output,test_predict)
+
+
+
+
+
